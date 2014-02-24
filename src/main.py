@@ -60,13 +60,14 @@ def parse_prog_input():
                        )
     parser.add_argument( '--domain-name'
                        , dest='domain'
-                       , default='mininet'
+                       , default='mininet-test'
                        , help='libvirt domain to test the code submission on'
                        )
     return parser.parse_args()
 
 def setup_test_environment(domain):
-    conn = libvirt.openReadOnly(None)
+    xml = "<domainsnapshot><domain><name>%s</name></domain></domainsnapshot>"
+    conn = libvirt.open(None)
     if conn == None:
         print 'Failed to open connection to the hypervisor'
         sys.exit(1)
@@ -77,8 +78,12 @@ def setup_test_environment(domain):
         print 'Failed to find the main domain'
         sys.exit(1)
 
-    print "Domain 0: id %d running %s" % (dom0.ID(), dom0.OSType())
-    print dom0.info()
+    if 1 != dom0.state()[0]:
+        dom0.create()
+    # verify reachability; use ssh?
+
+    ss = dom0.snapshotCreateXML(xml % domain, 0)
+    print ss.getName()
 
 def main():
     args = parse_prog_input()
