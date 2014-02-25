@@ -15,10 +15,15 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import libvirt
-import sys
 import argparse
+import libvirt
 import os
+import paramiko
+import socket
+import sys
+from collections import namedtuple
+
+Environment = namedtuple('Environment', ['dom_name', 'ss_name'])
 
 def parse_prog_input():
     desc = "Mininet Testing Tool (Prototype)"
@@ -65,30 +70,97 @@ def parse_prog_input():
                        )
     return parser.parse_args()
 
-def setup_test_environment(domain):
+def ssh_connect( hostname="mininet"
+               , port=22
+               , username="mininet"
+               , keyfile="~/.ssh/id_rsa"
+               ):
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.load_system_host_keys()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect( hostname = hostname
+                   , port = port
+                   , username = username
+                   , key_filename = os.path.expanduser(keyfile)
+                   )
+    except Exception, e:
+        print "Connection to host '%s' failed (%s)" % (hostname, str(e))
+        sys.exit(1)
+    return ssh
+
+
+def is_client_up( hostname="mininet"
+                , port=22
+                ):
+    up = False
+    ssh = ssh_connect(hostname=hostname, port=port)
+    (stdin, stdout, stderr) = ssh.exec_command("mn --version")
+    chan = stdout.channel
+    if 0 == chan.recv_exit_status():
+        up = True
+    chan.close()
+    ssh.close()
+    return up
+
+def setup_test_env(domain):
     xml = "<domainsnapshot><domain><name>%s</name></domain></domainsnapshot>"
     conn = libvirt.open(None)
     if conn == None:
-        print 'Failed to open connection to the hypervisor'
+        print "Failed to open connection to the hypervisor"
         sys.exit(1)
-
     try:
-        dom0 = conn.lookupByName(domain)
+        dom = conn.lookupByName(domain)
     except:
-        print 'Failed to find the main domain'
+        print "Failed to find domain '%s'" % domain
         sys.exit(1)
+    if libvirt.VIR_DOMAIN_SHUTOFF == dom.state()[0]:
+        print "Domain is shutdown; starting '%s'" % domain
+        try:
+            dom.create()
+        except:
+            print "Failed to start domain (%s)" % domain
+            sys.exit(1)
+    state = dom.state()[0]
+    if libvirt.VIR_DOMAIN_RUNNING != state:
+        print 'Domain (%s) in unsupported state (%s)' % (domain, state)
+        sys.exit(1)
+    if not is_client_up():
+        print "Unable to reach client on host '%s'" % hostname
+        sys.exit(1)
+    try:
+        ss = dom.snapshotCreateXML(xml % domain, 0)
+    except:
+        print "Failed to create snapshot of domain (%s)" % domain
+        sys.exit(1)
+    conn.close()
+    return Environment(dom_name=domain, ss_name=ss.getName())
 
-    if 1 != dom0.state()[0]:
-        dom0.create()
-    # verify reachability; use ssh?
-
-    ss = dom0.snapshotCreateXML(xml % domain, 0)
-    print ss.getName()
+def teardown_test_env(env):
+    conn = libvirt.open(None)
+    if conn == None:
+        print "Failed to open connection to the hypervisor"
+        sys.exit(1)
+    try:
+        dom = conn.lookupByName(env.dom_name)
+    except:
+        print "Failed to find domain '%s'" % env.dom_name
+        sys.exit(1)
+    try:
+        ss = dom.snapshotLookupByName(env.ss_name)
+        ss.delete(0)
+    except:
+        print "Failed to cleanup snapshot of domain (%s)" % env.dom_name
+        sys.exit(1)
+    conn.close()
 
 def main():
     args = parse_prog_input()
-    setup_test_environment(args.domain)
-
+    env = setup_test_env(args.domain)
+    # push code and test suite to VM
+    # test code
+    # display results
+    teardown_test_env(env)
 
 if __name__ == "__main__":
     main()
