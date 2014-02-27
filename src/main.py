@@ -15,16 +15,25 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from collections import namedtuple
 import argparse
+import hashlib
 import libvirt
 import os
 import paramiko
+import py_compile
 import socket
 import sys
-from collections import namedtuple
 
 Environment = namedtuple('Environment', ['dom_name', 'ss_name'])
 
+class GradingException(Exception):
+    def __init__(self,value):
+        self.value = "fail:\n%s" % value
+    def __str__(self):
+        return str(self.value)
+
+# TODO: reevaluate try except blocks
 def parse_prog_input():
     desc = "Mininet Testing Tool (Prototype)"
     contract = """program contract:
@@ -68,9 +77,14 @@ def parse_prog_input():
                        , default='mininet-test'
                        , help='libvirt domain to test the code submission on'
                        )
+    parser.add_argument( '--hostname'
+                       , dest='hostname'
+                       , default='mininet'
+                       , help='hostname for the libvirt test domain'
+                       )
     return parser.parse_args()
 
-def ssh_connect( hostname="mininet"
+def ssh_connect( hostname
                , port=22
                , username="mininet"
                , keyfile="~/.ssh/id_rsa"
@@ -90,7 +104,7 @@ def ssh_connect( hostname="mininet"
     return ssh
 
 
-def is_client_up( hostname="mininet"
+def is_client_up( hostname
                 , port=22
                 ):
     up = False
@@ -103,7 +117,7 @@ def is_client_up( hostname="mininet"
     ssh.close()
     return up
 
-def setup_test_env(domain):
+def setup_test_env(hostname, domain):
     xml = "<domainsnapshot><domain><name>%s</name></domain></domainsnapshot>"
     conn = libvirt.open(None)
     if conn == None:
@@ -125,7 +139,7 @@ def setup_test_env(domain):
     if libvirt.VIR_DOMAIN_RUNNING != state:
         print 'Domain (%s) in unsupported state (%s)' % (domain, state)
         sys.exit(1)
-    if not is_client_up():
+    if not is_client_up(hostname):
         print "Unable to reach client on host '%s'" % hostname
         sys.exit(1)
     try:
@@ -154,12 +168,58 @@ def teardown_test_env(env):
         sys.exit(1)
     conn.close()
 
+def sha1sum(path):
+    bs=65536
+    f = open(path, 'rb')
+    buf = f.read(bs)
+    h = hashlib.sha1()
+    while len(buf) > 0:
+        h.update(buf)
+        buf = f.read(bs)
+    f.close()
+    return (h.hexdigest(), path)
+
+def push_file(code, hostname, port=22):
+    ssh = ssh_connect(hostname=hostname, port=port)
+    scp = paramiko.SFTPClient.from_transport(ssh.get_transport())
+    scp.put(code, code)
+    chk_file = "%s.sha1sum" % os.path.basename(code)
+    chk_path = "/tmp/%s" % chk_file
+    f = open(chk_path, 'w')
+    f.write("%s  %s" % sha1sum(code))
+    f.close()
+    scp.put(chk_path, chk_file)
+    (stdin, stdout, stderr) = ssh.exec_command("sha1sum -c %s" % chk_file)
+    chan = stdout.channel
+    if 0 != chan.recv_exit_status():
+        raise Exception("Integrity checked failed for '%s'" % code)
+    chan.close()
+    scp.close()
+    ssh.close()
+
 def main():
     args = parse_prog_input()
-    env = setup_test_env(args.domain)
-    # push code and test suite to VM
-    # test code
-    # display results
+    sys.stdout.write("Standing up test environment...")
+    sys.stdout.flush()
+    env = setup_test_env(args.hostname, args.domain)
+    print "complete"
+    try:
+        try:
+            sys.stdout.write("Checking syntax...")
+            sys.stdout.flush()
+            py_compile.compile(args.code, doraise=True)
+        except Exception, e:
+            raise GradingException(str(e))
+        print "success"
+        py_compile.compile(args.tests, doraise=True)
+        push_file(args.code, args.hostname)
+        push_file(args.tests, args.hostname)
+        # test code
+        # display results
+    except GradingException, e:
+        print str(e)
+    except Exception, e:
+        print "Error occurred grading submission (%s)" % str(e)
     teardown_test_env(env)
 
 if __name__ == "__main__":
