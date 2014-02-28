@@ -177,27 +177,42 @@ def sha1sum(path):
         h.update(buf)
         buf = f.read(bs)
     f.close()
-    return (h.hexdigest(), path)
+    return h.hexdigest()
 
 def push_file(code, hostname, port=22):
     ssh = ssh_connect(hostname=hostname, port=port)
     scp = paramiko.SFTPClient.from_transport(ssh.get_transport())
-    scp.put(code, code)
-    chk_file = "%s.sha1sum" % os.path.basename(code)
+    fpath = os.path.expanduser(code)
+    fname = os.path.basename(fpath)
+    scp.put(fpath, fname)
+    chk_file = "%s.sha1sum" % fname
     chk_path = "/tmp/%s" % chk_file
     f = open(chk_path, 'w')
-    f.write("%s  %s" % sha1sum(code))
+    f.write("%s  %s" % (sha1sum(fpath), fname))
     f.close()
     scp.put(chk_path, chk_file)
     (stdin, stdout, stderr) = ssh.exec_command("sha1sum -c %s" % chk_file)
     chan = stdout.channel
     if 0 != chan.recv_exit_status():
-        raise Exception("Integrity checked failed for '%s'" % code)
+        raise Exception("Integrity checked failed for '%s'" % fpath)
     chan.close()
     scp.close()
     ssh.close()
 
+def test_code(tests, hostname, port=22):
+    ssh = ssh_connect(hostname=hostname, port=port)
+    (stdin, stdout, stderr) = ssh.exec_command("python %s" % tests)
+    results = stdout.readlines()
+    chan = stdout.channel
+    rc = chan.recv_exit_status()
+    chan.close()
+    ssh.close()
+    if 0 > rc or rc > 100:
+        raise Exception("Test suite returned error code (%s)" % rc)
+    return (rc, results)
+
 def main():
+    grade = 0
     args = parse_prog_input()
     sys.stdout.write("Standing up test environment...")
     sys.stdout.flush()
@@ -214,12 +229,15 @@ def main():
         py_compile.compile(args.tests, doraise=True)
         push_file(args.code, args.hostname)
         push_file(args.tests, args.hostname)
-        # test code
-        # display results
+        grade,output = test_code(args.tests, args.hostname)
+        print "Results:"
+        sys.stdout.write("".join(map(lambda x: "\t%s" % x, output)))
     except GradingException, e:
         print str(e)
     except Exception, e:
         print "Error occurred grading submission (%s)" % str(e)
+    else:
+        print "Grade: %s%%" % grade
     teardown_test_env(env)
 
 if __name__ == "__main__":
