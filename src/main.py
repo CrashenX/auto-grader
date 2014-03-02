@@ -144,7 +144,7 @@ def setup_test_env(hostname, domain):
         print "Failed to find domain '%s'" % domain
         sys.exit(1)
     if libvirt.VIR_DOMAIN_SHUTOFF == dom.state()[0]:
-        print "Domain is shutdown; starting '%s'" % domain
+        print "\n\tDomain is shutdown; starting '%s'" % domain
         try:
             dom.create()
         except:
@@ -248,10 +248,10 @@ def main():
         py_compile.compile(args.test, doraise=True)
         push_file(args.code, args.code_dest, args.hostname)
         push_file(args.test, args.test_dest, args.hostname)
-        print "Running tests:"
-        print "--------------------------------------------------"
+        print "Running tests (Not robust; you should run multiple times):"
+        print "----------------------------------------------------------"
         grade = test_code(args.test_dest, args.hostname)
-        print "--------------------------------------------------"
+        print "----------------------------------------------------------"
     except GradingException, e:
         print str(e)
     except Exception, e:
