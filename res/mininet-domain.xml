@@ -1,0 +1,48 @@
+<domain type='kvm'>
+  <name>mininet</name>
+  <memory unit='KiB'>1048576</memory>
+  <currentMemory unit='KiB'>1048576</currentMemory>
+  <vcpu placement='static'>1</vcpu>
+  <os>
+    <type arch='x86_64' machine='pc'>hvm</type>
+  </os>
+  <features>
+    <acpi/>
+    <pae/>
+  </features>
+  <clock offset='utc'/>
+  <on_poweroff>destroy</on_poweroff>
+  <on_reboot>restart</on_reboot>
+  <on_crash>destroy</on_crash>
+  <devices>
+    <emulator>/usr/bin/kvm</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='/path/to/mininet.qcow2'/>
+      <target dev='hda' bus='virtio'/>
+    </disk>
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file=''/>
+      <target dev='hdc' bus='ide'/>
+      <readonly/>
+    </disk>
+    <controller type='usb' index='0'/>
+    <controller type='ide' index='0'/>
+    <controller type='pci' index='0' model='pci-root'/>
+    <interface type='ethernet'>
+      <mac address='c8:f7:33:00:13:37'/>
+      <target dev='mininet'/>
+      <model type='virtio'/>
+    </interface>
+    <serial type='pty'/>
+    <input type='mouse' bus='ps2'/>
+    <graphics type='vnc' port='5901' autoport='no' listen=''>
+      <listen type='address' address=''/>
+    </graphics>
+    <video>
+      <model type='vga' vram='9216' heads='1'/>
+    </video>
+    <memballoon model='virtio'/>
+  </devices>
+</domain>
