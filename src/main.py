@@ -24,6 +24,7 @@ import paramiko
 import py_compile
 import socket
 import sys
+import time
 
 Environment = namedtuple('Environment', ['dom_name', 'ss_name'])
 
@@ -40,10 +41,13 @@ def parse_prog_input():
   Requires:
     - The test VM to be defined as a domain in libvirt (for now, mininet VM)
       SEE: https://plus.google.com/+JesseCooks/posts/a7GHgtS6bsT
-    - The paths to following be provided and read access granted:
+    - The following paths on the host to be provided and read access granted:
         the code that is to be tested
         the test suite that is to be run against the code
         the guest domain from which the tests will be run
+    - The following paths on the guest to be provided and r/w access granted:
+        the destination for the code submission
+        the destination for the test suite
     - The guest domain from which the tests will be run:
         to be reachable via the network from the host
         to have a client listening over the network (for now, ssh on port 22)
@@ -55,6 +59,7 @@ def parse_prog_input():
         the test suite that is to be run (for now, 1 python file)
     - The test suite will be run against the code on the guest
     - The test results will be presented (for now, printed to stdout)
+    - A grade will be presented (for now, printed to stdout)
     - The snapshot will be deleted
   """
     frmt = argparse.RawDescriptionHelpFormatter
@@ -67,10 +72,20 @@ def parse_prog_input():
                        , default='sample-submission.py'
                        , help='code submission to be tested'
                        )
+    parser.add_argument( '--submission-dest'
+                       , dest='code_dest'
+                       , default='/tmp/submission.py'
+                       , help='code submission destination within guest'
+                       )
     parser.add_argument( '--test-suite'
-                       , dest='tests'
+                       , dest='test'
                        , default='sample-test-suite.py'
                        , help='test suite to test the code submission with'
+                       )
+    parser.add_argument( '--test-suite-dest'
+                       , dest='test_dest'
+                       , default='/tmp/test-suite.py'
+                       , help='test suite destination within guest'
                        )
     parser.add_argument( '--domain-name'
                        , dest='domain'
@@ -179,19 +194,19 @@ def sha1sum(path):
     f.close()
     return h.hexdigest()
 
-def push_file(code, hostname, port=22):
+def push_file(src, tgt, hostname, port=22):
+    spath = os.path.expanduser(src)
+    dpath = os.path.expanduser(tgt)
+    sname = os.path.basename(spath)
+    chk_path = "/tmp/%s.sha1sum" % sname
+    f = open(chk_path, 'w')
+    f.write("%s  %s" % (sha1sum(spath), dpath))
+    f.close()
     ssh = ssh_connect(hostname=hostname, port=port)
     scp = paramiko.SFTPClient.from_transport(ssh.get_transport())
-    fpath = os.path.expanduser(code)
-    fname = os.path.basename(fpath)
-    scp.put(fpath, fname)
-    chk_file = "%s.sha1sum" % fname
-    chk_path = "/tmp/%s" % chk_file
-    f = open(chk_path, 'w')
-    f.write("%s  %s" % (sha1sum(fpath), fname))
-    f.close()
-    scp.put(chk_path, chk_file)
-    (stdin, stdout, stderr) = ssh.exec_command("sha1sum -c %s" % chk_file)
+    scp.put(spath, dpath)
+    scp.put(chk_path, chk_path)
+    (stdin, stdout, stderr) = ssh.exec_command("sha1sum -c %s" % chk_path)
     chan = stdout.channel
     if 0 != chan.recv_exit_status():
         raise Exception("Integrity checked failed for '%s'" % fpath)
@@ -199,17 +214,21 @@ def push_file(code, hostname, port=22):
     scp.close()
     ssh.close()
 
-def test_code(tests, hostname, port=22):
+def test_code(test, hostname, port=22):
     ssh = ssh_connect(hostname=hostname, port=port)
-    (stdin, stdout, stderr) = ssh.exec_command("python %s" % tests)
-    results = stdout.readlines()
+    (stdin, stdout, stderr) = ssh.exec_command("sudo python -u %s" % test, 0)
     chan = stdout.channel
+    while not chan.exit_status_ready():
+        time.sleep(.1)
+        if chan.recv_ready():
+            sys.stdout.write(chan.recv(1024))
+            sys.stdout.flush()
     rc = chan.recv_exit_status()
     chan.close()
     ssh.close()
     if 0 > rc or rc > 100:
         raise Exception("Test suite returned error code (%s)" % rc)
-    return (rc, results)
+    return rc
 
 def main():
     grade = 0
@@ -226,12 +245,13 @@ def main():
         except Exception, e:
             raise GradingException(str(e))
         print "success"
-        py_compile.compile(args.tests, doraise=True)
-        push_file(args.code, args.hostname)
-        push_file(args.tests, args.hostname)
-        grade,output = test_code(args.tests, args.hostname)
-        print "Results:"
-        sys.stdout.write("".join(map(lambda x: "\t%s" % x, output)))
+        py_compile.compile(args.test, doraise=True)
+        push_file(args.code, args.code_dest, args.hostname)
+        push_file(args.test, args.test_dest, args.hostname)
+        print "Running tests:"
+        print "--------------------------------------------------"
+        grade = test_code(args.test_dest, args.hostname)
+        print "--------------------------------------------------"
     except GradingException, e:
         print str(e)
     except Exception, e:
