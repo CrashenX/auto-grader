@@ -1,0 +1,100 @@
+#!/bin/bash
+# "Bridge" Networking between KVM Guest and Host
+#
+# Copyright (c) 2014 Jesse J. Cook
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+#
+# The is a simple script for setting up your host networking for a virtual
+# guest. It is not robust and is meant to be used as a simple example of how to
+# "bridge" networking between a KVM guest and a wireless host interface.
+
+DEFAULT_EXT_IFACE='wlan0'
+USER='jesse'
+HELP='<tap_name> <guest_ip>
+
+tap_name:  Tap name used in KVM command / libvirt domain XML
+guest_ip:  IP address on guest interface associated with tap
+'
+
+get_ext_iface() {
+    local __rc=$1
+    local i=$( ip route show | \
+                 awk '/^default / {
+                     for(i = 0; i< NF; ++i) {
+                         if ( $i == "dev" ) {
+                             print $(i+1);
+                             next;
+                         }
+                     }
+                 }'
+             )
+    if [[ -z $i ]]
+    then
+        i="$DEFAULT_EXT_IFACE"
+    fi
+    eval $__rc="'$i'"
+}
+
+if [[ 2 != $# ]]
+then
+    echo "$(basename $0) $HELP"
+    exit 1
+fi
+
+if [[ -z $1 ]]
+then
+    echo "$(basename $0) $HELP"
+    exit 1
+fi
+
+if [[ '--help' == "$1" || '-h' == "${1:0:2}" ]]
+then
+    echo "$(basename $0) $HELP"
+    exit 0
+fi
+
+tap=$1
+ip=$2
+
+get_ext_iface ext_iface
+echo "Creating user tap ($tap) for VM..."
+tunctl -u "$USER" -d "$tap"
+tunctl -u "$USER" -t "$tap"
+echo "Enabling ip forwarding..."
+echo 1 > /proc/sys/net/ipv4/ip_forward
+echo "Enabling proxy arp on '$tap' and '$ext_iface'..."
+echo 1 > /proc/sys/net/ipv4/conf/$tap/proxy_arp
+echo 1 > /proc/sys/net/ipv4/conf/$ext_iface/proxy_arp
+echo "Bringing tap ($tap) up..."
+ip link set "$tap" up
+echo "Enabling promiscuous mode for tap ($tap)..."
+ip link set "$tap" promisc on
+echo "Adding route to guest ip ($ip) via '$tap' tap..."
+ip route add "$ip" dev "$tap"
+echo "Setting firewall forwarding rules..."
+iptables -D FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null
+iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+iptables -D FORWARD -o "$ext_iface" -j ACCEPT 2>/dev/null
+iptables -A FORWARD -o "$ext_iface" -j ACCEPT
+echo "Allowing incoming icmp from guest ip ($ip)..."
+iptables -D INPUT -p icmp -s "$ip" -j ACCEPT 2>/dev/null
+iptables -A INPUT -p icmp -s "$ip" -j ACCEPT
+exit 0
