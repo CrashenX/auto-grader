@@ -34,7 +34,7 @@ USER='mininet'
 HOME='/home/%s' % USER
 PYTHONPATH='%s/pyretic:%s/mininet:%s/pox' % (HOME,HOME,HOME)
 CMD=[ '%s/pyretic/pyretic.py' % HOME
-    , 'pyretic.examples.pyretic_firewall'
+    , 'pyretic.examples.fw'
     ]
 
 # Topology to be instantiated in Mininet

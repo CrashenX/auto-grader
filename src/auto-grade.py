@@ -74,7 +74,7 @@ def parse_prog_input():
                        )
     parser.add_argument( '--submission-dest'
                        , dest='code_dest'
-                       , default='/tmp/submission.py'
+                       , default='/home/mininet/pyretic/pyretic/examples/fw.py'
                        , help='code submission destination within guest'
                        )
     parser.add_argument( '--test-suite'
