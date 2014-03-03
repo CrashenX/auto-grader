@@ -115,7 +115,7 @@ Setup the Environment
 
         virsh snapshot-create-as mininet pyretic "Pyretic config"
 
-9. Verify everything works
+9. Verify everything works:
 
         # Known Issues: 1) Sometimes ssh connection fails if domain is not
                            running prior to kicking off grader
@@ -126,7 +126,7 @@ Setup the Environment
         auto-grade.py # Should run and score 100%
         popd
 
-10. Cleanup downloaded and intermediate files
+10. Cleanup downloaded and intermediate files:
 
         rm -iv mininet-2.1.0-130919-ubuntu-13.04-server-amd64-ovf.zip
         rm -riv in
