@@ -89,7 +89,7 @@ def parse_prog_input():
                        )
     parser.add_argument( '--domain-name'
                        , dest='domain'
-                       , default='mininet-test'
+                       , default='mininet'
                        , help='libvirt domain to test the code submission on'
                        )
     parser.add_argument( '--hostname'
