@@ -1,6 +1,20 @@
 mininet-test
 ============
 
+Description
+-----------
+
+Prototype automatic grading framework with sample submission
+and test-suite for mininet programming problem.
+
+This prototype requires that you have a specific sandbox environment
+configured. See the 'Setup the Environment' section for steps to set
+up the sandbox.
+
+For program contract please run:
+
+     auto-grader.py -h
+
 Setup the Environment
 ---------------------
 
@@ -102,12 +116,16 @@ Setup the Environment
         virsh snapshot-create-as mininet pyretic "Pyretic config"
 
 9. Verify everything works
+
+        # Known Issues: 1) Sometimes ssh connection fails if domain is not
+                           running prior to kicking off grader
+                           Workaround: Run it again
+                        2) The sample-test-suite's scoring takes lacks
+                           sophistication
+        src/auto-grade.py # Should run and score 100%
+
 10. Cleanup downloaded and intermediate files
+
         rm -iv mininet-2.1.0-130919-ubuntu-13.04-server-amd64-ovf.zip
         rm -riv in
 
-Prototype for testing mininet solutions
-
-For program contract please run:
-
-     server.py -h
