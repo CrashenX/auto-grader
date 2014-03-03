@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # Mininet Automatic Testing Tool (Prototype)
 # Copyright (C) 2013 Jesse J. Cook
 
