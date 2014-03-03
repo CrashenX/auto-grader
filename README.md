@@ -76,7 +76,7 @@ Setup the Environment
         scp /home/jesse/.ssh/id_rsa.pub mininet@mininet:~/.ssh/authorized_keys
         ssh mininet@mininet
         sudo apt-get install acpid acpi-support # virsh shutdown support
-        sudo apt-get install bwm-ng python-matplotlib python-argparse\
+        sudo apt-get install arping bwm-ng python-matplotlib python-argparse\
         vnc4server libnss3-dev # stuff you will likely need
         exit
         virsh shutdown mininet && watch -n 1 'virsh list --all'
@@ -92,6 +92,7 @@ Setup the Environment
         ssh mininet@mininet
         # Follow pyretic instructions (skip any Virtual Box / VM export steps):
         #  https://github.com/frenetic-lang/pyretic/wiki/Building-the-Pyretic-VM
+        #  N.B., make sure your path changes are persistent
         exit
         virsh shutdown mininet && watch -n 1 'virsh list --all'
         # ctrl+c after state goes to shut off
