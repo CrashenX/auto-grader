@@ -41,7 +41,7 @@ CMD=[ '%s/pyretic/pyretic.py' % HOME
 class QTopo(Topo):
     "Quiet topology: You can only talk to gateway (h1)"
 
-    def __init__(self, n=5, cpu=10, bw=100, delay="5ms", loss=0, maxq=100):
+    def __init__(self, n=3, cpu=10, bw=100, delay="5ms", loss=0, maxq=100):
         super(QTopo, self).__init__()
         self.n = n
         self.cpu = cpu
@@ -110,10 +110,6 @@ def main():
                , MACPair(src='00:00:00:00:00:02', dst='00:00:00:00:00:01')
                , MACPair(src='00:00:00:00:00:01', dst='00:00:00:00:00:03')
                , MACPair(src='00:00:00:00:00:03', dst='00:00:00:00:00:01')
-               , MACPair(src='00:00:00:00:00:01', dst='00:00:00:00:00:04')
-               , MACPair(src='00:00:00:00:00:04', dst='00:00:00:00:00:01')
-               , MACPair(src='00:00:00:00:00:01', dst='00:00:00:00:00:05')
-               , MACPair(src='00:00:00:00:00:05', dst='00:00:00:00:00:01')
                ]
     cpid = start_controller()
     topo = QTopo()
