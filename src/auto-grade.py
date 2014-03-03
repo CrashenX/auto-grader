@@ -39,8 +39,7 @@ def parse_prog_input():
     desc = "Mininet Testing Tool (Prototype)"
     contract = """program contract:
   Requires:
-    - The test VM to be defined as a domain in libvirt (for now, mininet VM)
-      SEE: https://plus.google.com/+JesseCooks/posts/a7GHgtS6bsT
+    - The sandbox environment is setup as described in README.md
     - The following paths on the host to be provided and read access granted:
         the code that is to be tested
         the test suite that is to be run against the code
@@ -53,13 +52,14 @@ def parse_prog_input():
         to have a client listening over the network (for now, ssh on port 22)
         to have sufficent free space on the disk (60%% of allocated suggested)
   Guarantees:
-    - A snapshot of the guest will be created
+    - The domain state will be saved in a snapshot
     - The following will be installed on the snapshot of the guest:
         the code that is to be tested (for now, 1 python file)
         the test suite that is to be run (for now, 1 python file)
     - The test suite will be run against the code on the guest
     - The test results will be presented (for now, printed to stdout)
     - A grade will be presented (for now, printed to stdout)
+    - The domain's state will be revereted to the saved state
     - The snapshot will be deleted
   """
     frmt = argparse.RawDescriptionHelpFormatter
