@@ -1,5 +1,21 @@
-mininet-test
-============
+auto-grader
+===========
+
+Problem
+-------
+
+The turnaround time on student feedback for coursework is
+not yet fast enough to support the scale that Udacity and Georgia
+Tech aim to achieve.
+
+Solution
+--------
+
+1. Create a sandbox for testing (See: 'Setup the Environment')
+2. Develop requirements (the assignment)
+3. Develop black box tests for the requirements
+4. Give students the requirements (possibly including a deadline)
+5. Provide a portal for students to test and submit solutions (e.g. Udacity)
 
 Description
 -----------
@@ -9,11 +25,78 @@ and test-suite for mininet programming problem.
 
 This prototype requires that you have a specific sandbox environment
 configured. See the 'Setup the Environment' section for steps to set
-up the sandbox.
+up the sandbox. Once you have the environment setup, you can simply
+run the following to test:
 
-For program contract please run:
+     cd src/
+     ./auto-grader.py
+
+For program usage and code contract run:
 
      auto-grader.py -h
+
+How It Works
+------------
+
+1. Start the VM
+2. Create a snapshot
+3. Copy the code and test suite onto the guest
+4. Run the test suite
+5. Capture the output
+6. Report the results
+7. Revert the VM
+8. Delete the snapshot
+
+Q&A
+---
+
+Why is prototype focused around Mininet?
+
+1. I needed a use case to test against
+2. CS-6250 in the OMS CS program is focused around Mininet
+3. It's not a contrived problem (must stand-up Mininet and test network)
+4. I can use it to test my homework
+
+Why Python?
+
+1. It seems to be the lingua franca of Udacity and education.
+2. It has bindings for the libvirt API
+3. I just started using Python for the first time for the OMS CS program and
+   wanted to get some experience with it.
+
+Why Libvirt?
+
+1. It's an open-source virtualization API
+2. It supports KVM (+ most/all of the other contenders)
+3. I have a lot of experience with it
+
+Why KVM?
+
+1. Open-source
+2. Supports full and paravirtualization (guest OS can be different than host OS)
+3. Fast
+4. I have a lot of experience with it
+
+Why Qcow2?
+
+1. Open-source
+2. Copy-on-write
+3. Internal and external snapshots
+4. I have a lot of experience with it
+
+Why not Cucumber or Lettuce?
+
+1. I didn't know Cucumber could be used with Python until I was done
+2. I didn't know about Lettuce until I was done
+3. A minimal Python script met my requirements for prototyping
+
+Known Issues
+------------
+
+1. The auto grader code starts the domain if it isn't running. Occasionally,
+   the ssh connection fails if the domain isn't already running.
+ * Workaround: Just run `./auto-grader` again
+2. The sample-test-suite's scoring lacks sophistication
 
 Setup the Environment
 ---------------------
@@ -117,13 +200,8 @@ Setup the Environment
 
 9. Verify everything works:
 
-        # Known Issues: 1) Sometimes ssh connection fails if domain is not
-                           running prior to kicking off grader
-                           Workaround: Run it again
-                        2) The sample-test-suite's scoring takes lacks
-                           sophistication
         pushd src
-        auto-grade.py # Should run and score 100%
+        auto-grade.py # Should run and score 100%; if not see Known Issues
         popd
 
 10. Cleanup downloaded and intermediate files:
