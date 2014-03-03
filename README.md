@@ -122,7 +122,9 @@ Setup the Environment
                            Workaround: Run it again
                         2) The sample-test-suite's scoring takes lacks
                            sophistication
-        src/auto-grade.py # Should run and score 100%
+        pushd src
+        auto-grade.py # Should run and score 100%
+        popd
 
 10. Cleanup downloaded and intermediate files
 
