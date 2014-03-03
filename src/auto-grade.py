@@ -177,6 +177,7 @@ def teardown_test_env(env):
         sys.exit(1)
     try:
         ss = dom.snapshotLookupByName(env.ss_name)
+        dom.revertToSnapshot(ss)
         ss.delete(0)
     except:
         print "Failed to cleanup snapshot of domain (%s)" % env.dom_name
