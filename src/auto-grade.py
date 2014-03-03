@@ -249,7 +249,7 @@ def main():
         py_compile.compile(args.test, doraise=True)
         push_file(args.code, args.code_dest, args.hostname)
         push_file(args.test, args.test_dest, args.hostname)
-        print "Running tests (Not robust; you should run multiple times):"
+        print "Running tests:"
         print "----------------------------------------------------------"
         grade = test_code(args.test_dest, args.hostname)
         print "----------------------------------------------------------"
