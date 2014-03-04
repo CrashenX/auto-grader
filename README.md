@@ -93,13 +93,31 @@ Why not Cucumber or Lettuce?
 2. I didn't know about Lettuce until I was done
 3. A minimal Python script met my requirements for prototyping
 
+Performance Metrics
+-------------------
+
+System: Samsung Series 9 (SSD, i5)
+
+1. If the domain is not running, it takes roughly 23 seconds to test the sample
+   solution with the sample test suite. This includes starting the domain,
+   creating a snapshot, copying the files to the guest, running the tests,
+   reporting the results, reverting the domain, and deleting the snapshot.
+2. If the domain is running, it takes roughly 15 seconds to test the sample
+   solution with the sample test suite. This includes creating a snapshot,
+   copying the files to the guest, running the tests, reporting the results,
+   reverting the domain, and deleting the snapshot.
+
 Known Issues
 ------------
 
 1. The auto grader code starts the domain if it isn't running. Occasionally,
    the ssh connection fails if the domain isn't already running.
  * Workaround: Just run `./auto-grader` again
-2. The sample-test-suite's scoring lacks sophistication
+2. The sample-test-suite occasionally does not get a response from the first
+   several ARP requests to the first target. This results in a score below
+   100%.
+ * Workaround: Run `./auto-grader` multiple times and note the median
+3. The sample-test-suite's scoring lacks sophistication
 
 Setup the Environment
 ---------------------
