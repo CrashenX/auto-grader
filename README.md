@@ -8,6 +8,9 @@ The turnaround time on student feedback for coursework is
 not yet fast enough to support the scale that Udacity and Georgia
 Tech aim to achieve.
 
+If you haven't already, check out my post about this on Google+:
+https://plus.google.com/+JesseCooks/posts/8fXD9dHPFxA
+
 Solution
 --------
 
